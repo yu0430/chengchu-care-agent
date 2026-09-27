@@ -1,0 +1,338 @@
+{
+  "schema_version": "1.1",
+  "brand": "澄初个人护理",
+  "currency": "CNY",
+  "source": {
+    "document": "08题 澄初个人护理.pdf",
+    "page": 1,
+    "section": "使用范围",
+    "locator": "品牌手册"
+  },
+  "scope": "品牌、产品、价格与规则均为虚构考试设定，不对应真实品牌。",
+  "field_notes": {
+    "price_yuan": "手册标注的人民币单价，未应用任何折扣。",
+    "price_fen": "由 price_yuan 乘以 100 换算，用于整数金额计算。",
+    "derived_tags": "根据原文整理的检索标签，不是新增产品承诺；原始依据见 features 和 suitability。",
+    "null": "资料未提供或无法确认，不表示否定。",
+    "specification": "仅保存手册明确标注的规格；P301 的小瓶容量未提供。",
+    "name_status": "source_verified 表示名称按手册录入；user_confirmed 表示 PDF 缺字已由用户确认补全。",
+    "recommendation_conditions": "由手册中的适用提示和重要限制结构化得到，供 Python 校验推荐；不替代原文，判断时同时保留 suitability、limitations 和 source。"
+  },
+  "products": [
+    {
+      "sku": "P101",
+      "name": "云感氨基酸舒润洁面乳",
+      "name_status": "source_verified",
+      "specification": "150ml",
+      "price_yuan": 169,
+      "price_fen": 16900,
+      "features": [
+        "无香型",
+        "低泡",
+        "洗后易冲净"
+      ],
+      "suitability": "偏干或敏感倾向用户可考虑",
+      "limitations": [
+        "个体差异，首次使用建议局部测试"
+      ],
+      "derived_tags": {
+        "category": "洁面",
+        "fragrance": "none"
+      },
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P101"
+      },
+      "recommendation_conditions": {
+        "required_all": {},
+        "required_any": [
+          {
+            "skin_tendency": [
+              "偏干"
+            ]
+          },
+          {
+            "sensitive_tendency": true
+          }
+        ],
+        "goals_any": [],
+        "required_confirmations": [],
+        "blocked_if_any": [],
+        "not_preferred_if_any": [],
+        "cautions": [
+          {
+            "when": {},
+            "reason": "个体差异，首次使用建议局部测试。"
+          }
+        ]
+      }
+    },
+    {
+      "sku": "P102",
+      "name": "净澈控油洁面啫喱",
+      "name_status": "user_confirmed",
+      "specification": "150ml",
+      "price_yuan": 149,
+      "price_fen": 14900,
+      "features": [
+        "清洁感较强",
+        "带香味"
+      ],
+      "suitability": "偏油且偏好清爽肤感者",
+      "limitations": [
+        "对香味敏感者不优先"
+      ],
+      "derived_tags": {
+        "category": "洁面",
+        "fragrance": "scented"
+      },
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P102"
+      },
+      "name_note": "PDF 名称缺失字形，由用户于 2026-09-23 确认完整名称为：净澈控油洁面啫喱。",
+      "recommendation_conditions": {
+        "required_all": {
+          "skin_tendency": [
+            "偏油"
+          ]
+        },
+        "required_any": [],
+        "goals_any": [
+          "清爽肤感"
+        ],
+        "required_confirmations": [],
+        "blocked_if_any": [],
+        "not_preferred_if_any": [
+          {
+            "when": {
+              "fragrance_sensitive": true
+            },
+            "reason": "对香味敏感者不优先。"
+          }
+        ],
+        "cautions": []
+      }
+    },
+    {
+      "sku": "P201",
+      "name": "焕亮果酸细致精华液",
+      "name_status": "source_verified",
+      "specification": "30ml",
+      "price_yuan": 229,
+      "price_fen": 22900,
+      "features": [
+        "含 8% 果酸复合成分"
+      ],
+      "suitability": "有相关使用经验、希望改善粗糙者",
+      "limitations": [
+        "敏感、受损或正在不适的皮肤不推荐",
+        "需注意防晒"
+      ],
+      "derived_tags": {
+        "category": "精华",
+        "fragrance": null
+      },
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P201"
+      },
+      "recommendation_conditions": {
+        "required_all": {
+          "acid_experience": true,
+          "skin_state_stable": true,
+          "sensitive_tendency": false,
+          "current_discomfort": false,
+          "skin_damage": false
+        },
+        "required_any": [],
+        "goals_any": [
+          "改善粗糙"
+        ],
+        "required_confirmations": [
+          "acid_experience",
+          "skin_state_stable",
+          "sensitive_tendency",
+          "current_discomfort",
+          "skin_damage"
+        ],
+        "blocked_if_any": [
+          {
+            "when": {
+              "sensitive_tendency": true
+            },
+            "reason": "敏感皮肤不推荐 P201。"
+          },
+          {
+            "when": {
+              "skin_damage": true
+            },
+            "reason": "受损皮肤不推荐 P201。"
+          },
+          {
+            "when": {
+              "current_discomfort": true
+            },
+            "reason": "正在不适的皮肤不推荐 P201。"
+          }
+        ],
+        "not_preferred_if_any": [],
+        "cautions": [
+          {
+            "when": {},
+            "reason": "讨论或使用该产品时需注意防晒。"
+          }
+        ]
+      }
+    },
+    {
+      "sku": "P202",
+      "name": "屏护神经酰胺保湿乳",
+      "name_status": "source_verified",
+      "specification": "50ml",
+      "price_yuan": 259,
+      "price_fen": 25900,
+      "features": [
+        "无香型",
+        "含神经酰胺类保湿成分"
+      ],
+      "suitability": "干燥、屏障脆弱倾向用户可考虑",
+      "limitations": [
+        "不承诺治疗",
+        "明显不适建议咨询专业人士"
+      ],
+      "derived_tags": {
+        "category": "保湿",
+        "fragrance": "none"
+      },
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P202"
+      },
+      "recommendation_conditions": {
+        "required_all": {},
+        "required_any": [
+          {
+            "skin_tendency": [
+              "偏干"
+            ]
+          },
+          {
+            "barrier_fragile": true
+          }
+        ],
+        "goals_any": [],
+        "required_confirmations": [],
+        "blocked_if_any": [
+          {
+            "when": {
+              "current_discomfort": true
+            },
+            "reason": "明显不适时不继续正式推荐，应咨询专业人士。"
+          }
+        ],
+        "not_preferred_if_any": [],
+        "cautions": [
+          {
+            "when": {},
+            "reason": "本产品不作治疗承诺。"
+          }
+        ]
+      }
+    },
+    {
+      "sku": "P203",
+      "name": "水漾轻盈保湿凝露",
+      "name_status": "source_verified",
+      "specification": "50ml",
+      "price_yuan": 219,
+      "price_fen": 21900,
+      "features": [
+        "清爽质地",
+        "带淡香"
+      ],
+      "suitability": "偏油、喜欢轻薄肤感者",
+      "limitations": [
+        "对香味敏感者不优先"
+      ],
+      "derived_tags": {
+        "category": "保湿",
+        "fragrance": "lightly_scented"
+      },
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P203"
+      },
+      "recommendation_conditions": {
+        "required_all": {
+          "skin_tendency": [
+            "偏油"
+          ]
+        },
+        "required_any": [],
+        "goals_any": [
+          "轻薄肤感"
+        ],
+        "required_confirmations": [],
+        "blocked_if_any": [],
+        "not_preferred_if_any": [
+          {
+            "when": {
+              "fragrance_sensitive": true
+            },
+            "reason": "对香味敏感者不优先。"
+          }
+        ],
+        "cautions": []
+      }
+    },
+    {
+      "sku": "P301",
+      "name": "随行旅行分装瓶礼盒",
+      "name_status": "source_verified",
+      "specification": null,
+      "price_yuan": 49,
+      "price_fen": 4900,
+      "features": [
+        "4 个可重复使用小瓶"
+      ],
+      "suitability": "出差、旅行携带",
+      "limitations": [
+        "不属于护肤功效产品"
+      ],
+      "derived_tags": {
+        "category": "旅行配件",
+        "fragrance": null
+      },
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P301"
+      },
+      "recommendation_conditions": {
+        "required_all": {
+          "travel_need": true
+        },
+        "required_any": [],
+        "goals_any": [],
+        "required_confirmations": [
+          "travel_need"
+        ],
+        "blocked_if_any": [],
+        "not_preferred_if_any": [],
+        "cautions": []
+      }
+    }
+  ]
+}

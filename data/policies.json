@@ -1,0 +1,470 @@
+{
+  "schema_version": "1.1",
+  "brand": "澄初个人护理",
+  "currency": "CNY",
+  "source": {
+    "document": "08题 澄初个人护理.pdf",
+    "page": 1,
+    "section": "使用范围",
+    "locator": "品牌手册"
+  },
+  "field_notes": {
+    "ids": "规则 ID 为本项目整理时添加，原手册没有这些编号。",
+    "source_text": "来自手册的文字，已合并排版换行。",
+    "structured_fields": "对原文的结构化整理，应结合 source_text 理解；不扩大原文限制。",
+    "combination_price": "手册列出的组合总价，不代表优惠、折扣或促销。",
+    "missing_policy": "not_provided 表示手册未提供，不能解释成门店没有该政策或不提供该服务。",
+    "machine_conditions": "由同一条 source_text 结构化得到，字段名与 CustomerNeeds 对齐；只用于校验，不扩展原文含义。"
+  },
+  "brand_principles": [
+    {
+      "id": "B01",
+      "title": "品牌主张",
+      "source_text": "用清晰、克制的产品信息，帮助顾客做适合自己的日常护理选择。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "一、品牌定位",
+        "locator": "品牌主张"
+      }
+    },
+    {
+      "id": "B02",
+      "title": "服务原则",
+      "source_text": "先了解需求，再提出选择；不制造焦虑，不夸大效果，不强推连带购买。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "一、品牌定位",
+        "locator": "服务原则"
+      }
+    },
+    {
+      "id": "B03",
+      "title": "沟通语气",
+      "source_text": "温和、具体、尊重顾客决定。使用“可以考虑”“如果您在意……”等表达。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "一、品牌定位",
+        "locator": "沟通语气"
+      }
+    },
+    {
+      "id": "B04",
+      "title": "不可承诺",
+      "source_text": "不说“治愈、治疗、保证有效、绝对不过敏、马上见效”；不对价格、赠品、退换或授权作无依据承诺。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "一、品牌定位",
+        "locator": "不可承诺"
+      }
+    },
+    {
+      "id": "B05",
+      "title": "安全边界",
+      "source_text": "不作医疗诊断。顾客提到明显不适、受损或持续问题时，建议停止刺激性尝试并咨询专业人士。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "一、品牌定位",
+        "locator": "安全边界"
+      }
+    }
+  ],
+  "product_rules": [
+    {
+      "id": "R101",
+      "skus": [
+        "P101"
+      ],
+      "effect": "usage_caution",
+      "condition": "首次使用",
+      "source_text": "个体差异，首次使用建议局部测试",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P101／重要限制"
+      }
+    },
+    {
+      "id": "R102",
+      "skus": [
+        "P102"
+      ],
+      "effect": "not_preferred",
+      "condition": "对香味敏感",
+      "source_text": "对香味敏感者不优先",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P102／重要限制"
+      }
+    },
+    {
+      "id": "R201",
+      "skus": [
+        "P201"
+      ],
+      "effect": "not_recommended",
+      "condition": "敏感、受损或正在不适的皮肤",
+      "source_text": "敏感、受损或正在不适的皮肤不推荐",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P201／重要限制"
+      }
+    },
+    {
+      "id": "R202",
+      "skus": [
+        "P201"
+      ],
+      "effect": "usage_caution",
+      "condition": "讨论或使用该产品",
+      "source_text": "需注意防晒",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P201／重要限制"
+      }
+    },
+    {
+      "id": "R203",
+      "skus": [
+        "P202"
+      ],
+      "effect": "claim_boundary",
+      "condition": "介绍该产品",
+      "source_text": "不承诺治疗",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P202／重要限制"
+      }
+    },
+    {
+      "id": "R204",
+      "skus": [
+        "P202"
+      ],
+      "effect": "professional_consultation",
+      "condition": "明显不适",
+      "source_text": "明显不适建议咨询专业人士",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P202／重要限制"
+      }
+    },
+    {
+      "id": "R205",
+      "skus": [
+        "P203"
+      ],
+      "effect": "not_preferred",
+      "condition": "对香味敏感",
+      "source_text": "对香味敏感者不优先",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P203／重要限制"
+      }
+    },
+    {
+      "id": "R301",
+      "skus": [
+        "P301"
+      ],
+      "effect": "product_scope",
+      "condition": "介绍该产品",
+      "source_text": "不属于护肤功效产品",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "二、产品目录",
+        "locator": "P301／重要限制"
+      }
+    }
+  ],
+  "combinations": [
+    {
+      "id": "C01",
+      "customer_situation": "偏干、敏感倾向、希望简单护理",
+      "items": [
+        {
+          "sku": "P101",
+          "quantity": 1
+        },
+        {
+          "sku": "P202",
+          "quantity": 1
+        }
+      ],
+      "total_yuan": 428,
+      "total_fen": 42800,
+      "confirm_before_recommending": [
+        "预算"
+      ],
+      "source_text": "先确认预算；不以“修复/治疗”承诺效果。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "P101 + P202"
+      },
+      "machine_conditions": {
+        "required_all": {
+          "skin_tendency": [
+            "偏干"
+          ],
+          "sensitive_tendency": true
+        },
+        "required_any": [],
+        "goals_any": [
+          "简单护理"
+        ],
+        "required_confirmations": [
+          "budget_yuan"
+        ],
+        "blocked_if_any": [
+          {
+            "when": {
+              "current_discomfort": true
+            },
+            "reason": "明显不适时不继续正式推荐护肤组合。"
+          },
+          {
+            "when": {
+              "skin_damage": true
+            },
+            "reason": "皮肤受损时不继续正式推荐护肤组合。"
+          }
+        ],
+        "not_preferred_if_any": [],
+        "cautions": []
+      }
+    },
+    {
+      "id": "C02",
+      "customer_situation": "偏油、可接受香味、喜欢清爽感",
+      "items": [
+        {
+          "sku": "P102",
+          "quantity": 1
+        },
+        {
+          "sku": "P203",
+          "quantity": 1
+        }
+      ],
+      "total_yuan": 368,
+      "total_fen": 36800,
+      "confirm_before_recommending": [
+        "预算",
+        "香味偏好"
+      ],
+      "source_text": "先确认预算与香味偏好。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "P102 + P203"
+      },
+      "machine_conditions": {
+        "required_all": {
+          "skin_tendency": [
+            "偏油"
+          ],
+          "fragrance_preference": [
+            "可接受香味",
+            "不限"
+          ]
+        },
+        "required_any": [],
+        "goals_any": [
+          "清爽肤感"
+        ],
+        "required_confirmations": [
+          "budget_yuan",
+          "fragrance_preference"
+        ],
+        "blocked_if_any": [],
+        "not_preferred_if_any": [
+          {
+            "when": {
+              "fragrance_sensitive": true
+            },
+            "reason": "对香味敏感者不优先讨论 P102 + P203。"
+          }
+        ],
+        "cautions": []
+      }
+    }
+  ],
+  "scenario_rules": [
+    {
+      "id": "S01",
+      "skus": [
+        "P201"
+      ],
+      "customer_situation": "有焕肤经验、状态稳定、希望改善粗糙",
+      "recommendation_scope": "P201 可单独讨论",
+      "confirm_before_recommending": [
+        "敏感/不适",
+        "使用经验"
+      ],
+      "source_text": "先问敏感/不适和使用经验；说明注意防晒，不强推。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "P201 可单独讨论"
+      },
+      "machine_conditions": {
+        "required_all": {
+          "acid_experience": true,
+          "skin_state_stable": true,
+          "sensitive_tendency": false,
+          "current_discomfort": false,
+          "skin_damage": false
+        },
+        "required_any": [],
+        "goals_any": [
+          "改善粗糙"
+        ],
+        "required_confirmations": [
+          "acid_experience",
+          "skin_state_stable",
+          "sensitive_tendency",
+          "current_discomfort",
+          "skin_damage"
+        ],
+        "blocked_if_any": [
+          {
+            "when": {
+              "sensitive_tendency": true
+            },
+            "reason": "敏感皮肤不推荐 P201。"
+          },
+          {
+            "when": {
+              "skin_damage": true
+            },
+            "reason": "受损皮肤不推荐 P201。"
+          },
+          {
+            "when": {
+              "current_discomfort": true
+            },
+            "reason": "正在不适的皮肤不推荐 P201。"
+          }
+        ],
+        "not_preferred_if_any": [],
+        "cautions": []
+      }
+    },
+    {
+      "id": "S02",
+      "skus": [
+        "P301"
+      ],
+      "customer_situation": "明确出差/旅行场景",
+      "source_text": "仅在旅行携带需求明确时连带推荐。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "P301"
+      },
+      "machine_conditions": {
+        "required_all": {
+          "travel_need": true
+        },
+        "required_any": [],
+        "goals_any": [],
+        "required_confirmations": [
+          "travel_need"
+        ],
+        "blocked_if_any": [],
+        "not_preferred_if_any": [],
+        "cautions": []
+      }
+    }
+  ],
+  "unprovided_policies": [
+    {
+      "id": "U01",
+      "topic": "促销",
+      "status": "not_provided",
+      "response": "需要向门店或系统确认",
+      "source_text": "本手册未提供促销、赠品、线上同价、退换货或渠道授权政策。遇到此类问题，应说明“需要向门店或系统确认”。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "表格后提示"
+      }
+    },
+    {
+      "id": "U02",
+      "topic": "赠品",
+      "status": "not_provided",
+      "response": "需要向门店或系统确认",
+      "source_text": "本手册未提供促销、赠品、线上同价、退换货或渠道授权政策。遇到此类问题，应说明“需要向门店或系统确认”。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "表格后提示"
+      }
+    },
+    {
+      "id": "U03",
+      "topic": "线上同价",
+      "status": "not_provided",
+      "response": "需要向门店或系统确认",
+      "source_text": "本手册未提供促销、赠品、线上同价、退换货或渠道授权政策。遇到此类问题，应说明“需要向门店或系统确认”。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "表格后提示"
+      }
+    },
+    {
+      "id": "U04",
+      "topic": "退换货",
+      "status": "not_provided",
+      "response": "需要向门店或系统确认",
+      "source_text": "本手册未提供促销、赠品、线上同价、退换货或渠道授权政策。遇到此类问题，应说明“需要向门店或系统确认”。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "表格后提示"
+      }
+    },
+    {
+      "id": "U05",
+      "topic": "渠道授权",
+      "status": "not_provided",
+      "response": "需要向门店或系统确认",
+      "source_text": "本手册未提供促销、赠品、线上同价、退换货或渠道授权政策。遇到此类问题，应说明“需要向门店或系统确认”。",
+      "source": {
+        "document": "08题 澄初个人护理.pdf",
+        "page": 1,
+        "section": "三、组合与边界",
+        "locator": "表格后提示"
+      }
+    }
+  ]
+}
