@@ -1,0 +1,7 @@
+
+# 本地密钥与 Python 缓存
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
