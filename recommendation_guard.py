@@ -17,12 +17,12 @@ from recommendation_validator import validate_candidate_data
 def select_documented_combination(
     confirmed_needs: dict[str, Any],
 ) -> dict[str, Any] | None:
-    """只在顾客明确选择完整护理且候选校验通过时返回资料组合。"""
+    """未限制为单品/指定品类且候选校验通过时返回资料组合。"""
     try:
         needs = validate_customer_needs(confirmed_needs)
     except CustomerNeedsError:
         return None
-    if needs.get("selection_scope") != "完整护理":
+    if needs.get("selection_scope") in {"单品", "指定品类"}:
         return None
 
     for combination in POLICIES_DATA["combinations"]:
@@ -162,7 +162,7 @@ def render_approved_validation(validation: dict[str, Any]) -> str:
     elif needs.get("budget_status") == "declined":
         confirmed_lines.append("- 预算：暂不提供")
     confirmed_text = "\n".join(confirmed_lines) or "- 已按你明确提供的信息核对"
-    return (
+    result = (
         "### 已确认需求\n\n"
         + confirmed_text
         + "\n\n### 推荐建议\n\n"
@@ -174,6 +174,12 @@ def render_approved_validation(validation: dict[str, Any]) -> str:
         + "\n\n### 使用提醒与限制\n\n"
         + reminders
     )
+    if len(quote_items) > 1:
+        result += (
+            "\n\n如果你只想先买一件，也可以告诉我更想先看洁面还是保湿，"
+            "我会按单品范围重新核对。"
+        )
+    return result
 
 
 def render_unapproved_validation(validation: dict[str, Any]) -> str:

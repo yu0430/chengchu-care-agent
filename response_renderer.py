@@ -10,6 +10,7 @@ QUESTION_TEXT = {
     "fragrance_preference": "香味方面更偏好无香，还是可以接受带香味的产品？",
     "fragrance_sensitive": "香味是否会让你感到不舒服或明显敏感？",
     "selection_scope": "你想先看一件单品或指定品类，还是一起看看完整的基础护理组合？",
+    "desired_category": "如果只先看一类，你想看洁面、保湿、精华还是旅行配件？",
     "sensitive_tendency": "你的皮肤是否有敏感倾向？",
     "current_discomfort": "目前是否正在出现明显不适？",
     "skin_damage": "目前皮肤是否有受损情况？",
@@ -25,13 +26,28 @@ QUESTION_TEXT = {
 def render_question_plan(plan: dict[str, Any], needs: dict[str, Any]) -> str:
     question = plan.get("question") or {}
     fields = question.get("fields") or []
+    question_id = question.get("question_id")
     confirmed: list[str] = []
     if needs.get("skin_tendency"):
         confirmed.append(str(needs["skin_tendency"]))
     if needs.get("goals"):
         confirmed.extend(str(value) for value in needs["goals"])
     prefix = f"了解，你提到的是{'、'.join(confirmed)}。\n\n" if confirmed else ""
-    questions = [QUESTION_TEXT.get(field, f"请确认{field}。") for field in fields]
+    if question_id == "p201_skin_safety":
+        questions = [
+            "目前是否有敏感倾向、皮肤受损或明显不适的情况？"
+            "如果都没有，可以直接说“都没有”。"
+        ]
+    elif question_id == "p201_experience_state":
+        missing = set(fields)
+        if missing == {"acid_experience", "skin_state_stable"}:
+            questions = ["你是否有果酸或相关焕肤产品的使用经验，目前皮肤状态是否稳定？"]
+        else:
+            questions = [QUESTION_TEXT.get(field, f"请确认{field}。") for field in fields]
+    elif question_id == "single_category":
+        questions = [QUESTION_TEXT["desired_category"]]
+    else:
+        questions = [QUESTION_TEXT.get(field, f"请确认{field}。") for field in fields]
     return prefix + "\n\n".join(questions)
 
 
@@ -58,6 +74,11 @@ def render_no_supported_option(plan: dict[str, Any], needs: dict[str, Any]) -> s
         )
     if "NO_TRAVEL_NEED" in set(plan.get("reason_codes") or []):
         return "既然目前没有旅行携带需求，我不会把旅行分装瓶作为连带建议。"
+    if plan.get("route_id") == "S01":
+        return (
+            "根据你确认的敏感、受损或当前不适情况，资料明确不建议使用 P201 果酸精华。"
+            "这只是在排除这款商品，不代表没有任何护理方向；你仍可以查询其他品类的客观资料。"
+        )
     return (
         "根据目前已确认的信息，品牌资料没有能够可靠支持的建议。"
         "我不会为了凑出方案而放宽条件；可以改看指定品类，或由人工进一步确认。"

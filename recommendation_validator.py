@@ -109,15 +109,9 @@ def validate_candidate_data(
     assert normalized is not None
 
     scope = needs.get("selection_scope")
-    if len(normalized) > 1 and scope is None:
-        return _result(
-            "needs_clarification",
-            confirmed_needs=needs,
-            items=normalized,
-            missing_information=["selection_scope"],
-            next_action="提出组合前确认购买范围。",
-        )
-    if len(normalized) > 1 and scope != "完整护理":
+    # 手册的 C01/C02 本身就是可以讨论的组合。顾客未限定购买范围时，
+    # 组合可作为一个完整选项直接展示；只有明确要求单品/指定品类时才冲突。
+    if len(normalized) > 1 and scope in {"单品", "指定品类"}:
         return _result(
             "scope_conflict",
             confirmed_needs=needs,

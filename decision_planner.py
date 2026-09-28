@@ -32,6 +32,7 @@ PlanAction = Literal[
 class QuestionPlan:
     fields: list[str]
     route_id: str | None = None
+    question_id: str | None = None
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -52,12 +53,12 @@ class DecisionPlan:
     cautions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        result = asdict(self)
-        return result
+        return asdict(self)
 
 
 RECOMMENDATION_HINTS = (
-    "推荐", "建议", "怎么选", "选哪个", "哪个好", "适合我", "搭配", "配一套", "买什么"
+    "推荐", "建议", "怎么选", "如何选", "选哪个", "哪个好", "适合",
+    "搭配", "配一套", "买什么", "想买", "想看", "帮我选", "怎么搭",
 )
 
 POLICY_TOPICS = {
@@ -82,13 +83,42 @@ def _asks_recommendation(text: str) -> bool:
 
 
 def _asks_fact(text: str) -> bool:
-    return bool(re.search(r"P(?:101|102|201|202|203|301)", text, re.IGNORECASE)) or any(
-        term in text for term in ("多少钱", "价格", "有什么特点", "规格", "容量", "成分")
+    has_sku = bool(
+        re.search(r"P(?:101|102|201|202|203|301)", text, re.IGNORECASE)
     )
+    fact_words = ("多少钱", "价格", "有什么特点", "规格", "容量", "成分", "是什么")
+    return has_sku or any(term in text for term in fact_words)
 
 
 def _specific_skus(text: str) -> list[str]:
-    return list(dict.fromkeys(re.findall(r"P(?:101|102|201|202|203|301)", text.upper())))
+    return list(
+        dict.fromkeys(
+            re.findall(r"P(?:101|102|201|202|203|301)", text.upper())
+        )
+    )
+
+
+def _ask(
+    fields: list[str],
+    *,
+    route_id: str | None = None,
+    question_id: str | None = None,
+    reason: str,
+    candidate_items: list[dict[str, Any]] | None = None,
+    reason_codes: list[str] | None = None,
+) -> DecisionPlan:
+    return DecisionPlan(
+        action="ASK",
+        route_id=route_id,
+        candidate_items=candidate_items or [],
+        question=QuestionPlan(
+            fields=list(dict.fromkeys(fields)),
+            route_id=route_id,
+            question_id=question_id,
+            reason=reason,
+        ),
+        reason_codes=reason_codes or ["MISSING_REQUIRED_INFORMATION"],
+    )
 
 
 def _plan_specific_sku(needs: dict[str, Any], sku: str) -> DecisionPlan:
@@ -103,6 +133,7 @@ def _plan_specific_sku(needs: dict[str, Any], sku: str) -> DecisionPlan:
             conflicts=["fragrance_requirement"],
             reason_codes=["SKU_CONFLICTS_WITH_HARD_FRAGRANCE_REQUIREMENT"],
         )
+
     check = evaluate_machine_conditions(
         needs, product.get("recommendation_conditions") or {}
     )
@@ -121,18 +152,56 @@ def _plan_specific_sku(needs: dict[str, Any], sku: str) -> DecisionPlan:
         )
     if check["missing"]:
         order = [
-            "sensitive_tendency", "current_discomfort", "skin_damage",
-            "acid_experience", "skin_state_stable", "skin_tendency", "goals", "travel_need",
+            "sensitive_tendency",
+            "skin_damage",
+            "current_discomfort",
+            "acid_experience",
+            "skin_state_stable",
+            "skin_tendency",
+            "goals",
+            "travel_need",
         ]
         fields = [field for field in order if field in check["missing"]]
         fields.extend(field for field in check["missing"] if field not in fields)
-        return DecisionPlan(
-            action="ASK",
+        if sku == "P201":
+            safety = [
+                field
+                for field in (
+                    "sensitive_tendency",
+                    "skin_damage",
+                    "current_discomfort",
+                )
+                if field in fields
+            ]
+            if safety:
+                return _ask(
+                    safety,
+                    route_id="S01",
+                    question_id="p201_skin_safety",
+                    reason="讨论果酸精华前需要确认资料明确列出的安全边界。",
+                    candidate_items=[{"sku": sku, "quantity": 1}],
+                    reason_codes=["SKU_NEEDS_CONFIRMATION"],
+                )
+            experience = [
+                field
+                for field in ("acid_experience", "skin_state_stable")
+                if field in fields
+            ]
+            if experience:
+                return _ask(
+                    experience,
+                    route_id="S01",
+                    question_id="p201_experience_state",
+                    reason="讨论果酸精华前需要确认使用经验和当前状态。",
+                    candidate_items=[{"sku": sku, "quantity": 1}],
+                    reason_codes=["SKU_NEEDS_CONFIRMATION"],
+                )
+        return _ask(
+            fields[:2],
+            route_id="S01" if sku == "P201" else None,
+            question_id="s01_trigger" if sku == "P201" else f"{sku.lower()}_confirmation",
+            reason="判断指定商品是否适合前需要确认关键条件。",
             candidate_items=[{"sku": sku, "quantity": 1}],
-            question=QuestionPlan(
-                fields=fields[:2],
-                reason="判断指定商品是否适合前需要确认关键条件。",
-            ),
             reason_codes=["SKU_NEEDS_CONFIRMATION"],
         )
     return DecisionPlan(
@@ -142,9 +211,11 @@ def _plan_specific_sku(needs: dict[str, Any], sku: str) -> DecisionPlan:
     )
 
 
-def _safety_plan(needs: dict[str, Any], category: str | None) -> DecisionPlan | None:
-    # P301 不是护肤功效产品，皮肤状态不阻止回答其客观信息或旅行携带建议。
-    if category == "旅行配件":
+def _safety_plan(
+    needs: dict[str, Any], *, travel_context: bool = False
+) -> DecisionPlan | None:
+    # P301 不是护肤功效产品，皮肤状态不阻止回答其资料或旅行携带建议。
+    if travel_context:
         return None
     reasons: list[str] = []
     if needs.get("current_discomfort") is True:
@@ -159,7 +230,8 @@ def _safety_plan(needs: dict[str, Any], category: str | None) -> DecisionPlan | 
 
 
 def _route_priority(item: RuleAssessment) -> tuple[int, int, int]:
-    order = {"C01": 4, "C02": 3, "S01": 2, "S02": 1}
+    # 场景与组合都参与一级路由。优先选择已明确命中字段更多、缺失更少的路线。
+    order = {"S01": 4, "C01": 3, "C02": 3, "S02": 2}
     return (
         len(item.matched_fields),
         -len(item.missing_trigger_fields),
@@ -168,77 +240,140 @@ def _route_priority(item: RuleAssessment) -> tuple[int, int, int]:
 
 
 def _question_for_route(route: RuleAssessment) -> DecisionPlan | None:
-    fields = list(route.missing_confirmation_fields)
-    if route.rule_id == "S01":
-        # 安全相关项先于使用经验；每轮最多询问两项。
-        order = [
-            "sensitive_tendency",
-            "current_discomfort",
-            "skin_damage",
-            "acid_experience",
-            "skin_state_stable",
+    if route.missing_trigger_fields:
+        trigger_order = {
+            "C01": ["skin_tendency", "sensitive_tendency", "goals"],
+            "C02": ["skin_tendency", "goals"],
+            "S01": ["goals"],
+            "S02": ["travel_need"],
+        }
+        fields = [
+            field
+            for field in trigger_order.get(route.rule_id, [])
+            if field in route.missing_trigger_fields
         ]
-        fields = [field for field in order if field in fields]
-    fields = fields[:2]
-    if not fields:
+        fields.extend(
+            field
+            for field in route.missing_trigger_fields
+            if field not in fields
+        )
+        if fields:
+            return _ask(
+                fields[:2],
+                route_id=route.rule_id,
+                question_id=f"{route.rule_id.lower()}_trigger",
+                reason="需要补充能够区分资料路线的关键信息。",
+                candidate_items=route.candidate_items,
+                reason_codes=["MISSING_ROUTE_TRIGGERS"],
+            )
+
+    missing = list(route.missing_confirmation_fields)
+    if not missing:
         return None
-    return DecisionPlan(
-        action="ASK",
+
+    if route.rule_id == "S01":
+        safety = [
+            field
+            for field in (
+                "sensitive_tendency",
+                "skin_damage",
+                "current_discomfort",
+            )
+            if field in missing
+        ]
+        if safety:
+            return _ask(
+                safety,
+                route_id="S01",
+                question_id="p201_skin_safety",
+                reason="讨论果酸精华前需要确认敏感、受损和当前不适情况。",
+                candidate_items=route.candidate_items,
+                reason_codes=["MISSING_REQUIRED_CONFIRMATIONS"],
+            )
+        experience = [
+            field
+            for field in ("acid_experience", "skin_state_stable")
+            if field in missing
+        ]
+        return _ask(
+            experience[:2],
+            route_id="S01",
+            question_id="p201_experience_state",
+            reason="讨论果酸精华前需要确认使用经验和当前状态。",
+            candidate_items=route.candidate_items,
+            reason_codes=["MISSING_REQUIRED_CONFIRMATIONS"],
+        )
+
+    question_id = {
+        "C01": "c01_budget",
+        "C02": "c02_budget_fragrance",
+        "S02": "s02_travel",
+    }.get(route.rule_id)
+    return _ask(
+        missing[:2],
         route_id=route.rule_id,
-        question=QuestionPlan(
-            fields=fields,
-            route_id=route.rule_id,
-            reason="正式建议前需要确认品牌资料明确要求的信息。",
-        ),
+        question_id=question_id,
+        reason="正式建议前需要确认品牌资料明确要求的信息。",
         candidate_items=route.candidate_items,
         reason_codes=["MISSING_REQUIRED_CONFIRMATIONS"],
+    )
+
+
+def _single_category_question(route_id: str | None = None) -> DecisionPlan:
+    return _ask(
+        ["desired_category"],
+        route_id=route_id,
+        question_id="single_category",
+        reason="你已经明确想先看单品，需要确认想看的品类。",
+        reason_codes=["SINGLE_CATEGORY_REQUIRED"],
     )
 
 
 def _plan_category(needs: dict[str, Any], category: str) -> DecisionPlan:
     if category == "精华":
         route = assess_route(needs, "S01")
-        if route.applicability == "irrelevant" and route.missing_trigger_fields:
-            return DecisionPlan(
-                action="COMPARE_CATEGORY",
-                category=category,
-                candidate_items=[{"sku": "P201", "quantity": 1}],
-                reason_codes=["ESSENCE_GOAL_NEEDS_CONFIRMATION"],
-            )
-        question = _question_for_route(route)
-        if question:
-            return question
         if route.applicability == "blocked":
             return DecisionPlan(
-                action="STOP_FOR_SAFETY",
+                action="NO_SUPPORTED_OPTION",
                 route_id="S01",
-                reason_codes=["P201_SAFETY_BOUNDARY"],
+                candidate_items=route.candidate_items,
                 conflicts=route.blocking_reasons,
+                reason_codes=["P201_NOT_RECOMMENDED_FOR_CONFIRMED_STATE"],
             )
         if route.applicability == "conflicted":
             return DecisionPlan(
                 action="NO_SUPPORTED_OPTION",
                 route_id="S01",
+                candidate_items=route.candidate_items,
                 conflicts=route.conflicting_fields,
                 reason_codes=["P201_CONDITIONS_NOT_MET"],
             )
+        question = _question_for_route(route)
+        if question:
+            return question
         if route.applicability == "matched":
             return DecisionPlan(
                 action="BUILD_CANDIDATE",
                 route_id="S01",
                 candidate_items=route.candidate_items,
             )
+        return _ask(
+            ["goals"],
+            route_id="S01",
+            question_id="s01_trigger",
+            reason="需要先确认希望改善的方向。",
+            candidate_items=route.candidate_items,
+        )
+
     if category == "旅行配件":
         route = assess_route(needs, "S02")
         if needs.get("travel_need") is None:
-            return DecisionPlan(
-                action="ASK",
+            return _ask(
+                ["travel_need"],
                 route_id="S02",
-                question=QuestionPlan(
-                    fields=["travel_need"],
-                    route_id="S02",
-                    reason="旅行携带需求明确时才讨论连带推荐。",
-                ),
+                question_id="s02_travel",
+                reason="旅行携带需求明确时才讨论连带推荐。",
+                candidate_items=route.candidate_items,
                 reason_codes=["TRAVEL_NEED_REQUIRED"],
             )
         if needs.get("travel_need") is True:
@@ -269,14 +404,22 @@ def _plan_category(needs: dict[str, Any], category: str) -> DecisionPlan:
     return DecisionPlan(
         action="COMPARE_CATEGORY",
         category=category,
-        candidate_items=[{"sku": sku, "quantity": 1} for sku in proposal.alternatives],
+        candidate_items=[
+            {"sku": sku, "quantity": 1}
+            for sku in proposal.alternatives
+        ],
         reason_codes=["CATEGORY_NEEDS_PRODUCT_COMPARISON"],
     )
 
 
-def plan_next_action(needs: dict[str, Any], latest_user_text: str) -> dict[str, Any]:
-    """返回本轮唯一动作；不会提交空商品列表，也不会计算价格。"""
+def plan_next_action(
+    needs: dict[str, Any],
+    latest_user_text: str,
+    active_route_id: str | None = None,
+) -> dict[str, Any]:
+    """返回本轮唯一动作；不提交空商品列表，也不计算价格。"""
     text = latest_user_text.strip()
+
     topics = _policy_topics(text)
     if topics:
         return DecisionPlan(
@@ -285,28 +428,44 @@ def plan_next_action(needs: dict[str, Any], latest_user_text: str) -> dict[str, 
             policy_topics=topics,
         ).to_dict()
 
-    pending = needs.get("pending_questions") or []
-    evidence = needs.get("evidence") or {}
-    profile_reply = any(
-        field != "desired_sku" and isinstance(quote, str) and quote and quote in text
-        for field, quote in evidence.items()
-    )
-    recommendation_requested = (
-        _asks_recommendation(text)
-        or bool(pending)
-        or (needs.get("desired_sku") is not None and profile_reply)
-    )
-    if _asks_fact(text) and not recommendation_requested:
+    explicit_recommendation = _asks_recommendation(text)
+    if _asks_fact(text) and not explicit_recommendation:
         return DecisionPlan(action="ANSWER_FACT").to_dict()
 
+    pending = needs.get("pending_questions") or []
+    profile_present = any(
+        needs.get(field) is not None
+        for field in (
+            "skin_tendency",
+            "sensitive_tendency",
+            "acid_experience",
+            "skin_state_stable",
+            "travel_need",
+        )
+    ) or bool(needs.get("goals"))
+    recommendation_requested = bool(
+        explicit_recommendation or pending or active_route_id or profile_present
+    )
+
+    skus = _specific_skus(text)
+    if (
+        not skus
+        and recommendation_requested
+        and needs.get("desired_sku")
+    ):
+        skus = [needs["desired_sku"]]
+
     category = needs.get("desired_category")
-    safety = _safety_plan(needs, category)
+    travel_context = bool(
+        category == "旅行配件"
+        or skus == ["P301"]
+        or active_route_id == "S02"
+        or needs.get("travel_need") is True
+    )
+    safety = _safety_plan(needs, travel_context=travel_context)
     if safety:
         return safety.to_dict()
 
-    skus = _specific_skus(text)
-    if not skus and recommendation_requested and needs.get("desired_sku"):
-        skus = [needs["desired_sku"]]
     if recommendation_requested and len(skus) == 1:
         return _plan_specific_sku(needs, skus[0]).to_dict()
 
@@ -314,80 +473,104 @@ def plan_next_action(needs: dict[str, Any], latest_user_text: str) -> dict[str, 
         return _plan_category(needs, category).to_dict()
 
     scope = needs.get("selection_scope")
-    routes = [
-        item
-        for item in assess_routes(needs)
-        if item.kind == "combination" and item.applicability != "irrelevant"
-    ]
-    viable = [item for item in routes if item.applicability not in {"conflicted", "blocked"}]
-    if viable:
-        route = max(viable, key=_route_priority)
-        # 只有触发条件全部成立后才询问该组合的预算、香味等确认项。
-        if not route.missing_trigger_fields:
-            question = _question_for_route(route)
-            if question:
-                return question.to_dict()
-            if scope is None:
-                scope_fields = ["selection_scope"]
-                if route.rule_id == "C02" and needs.get("fragrance_sensitive") is None:
-                    scope_fields.append("fragrance_sensitive")
-                return DecisionPlan(
-                    action="ASK",
-                    route_id=route.rule_id,
-                    candidate_items=route.candidate_items,
-                    question=QuestionPlan(
-                        fields=scope_fields,
-                        route_id=route.rule_id,
-                        reason="提出两件组合前需要尊重顾客的购买范围。",
-                    ),
-                    reason_codes=["SCOPE_REQUIRED_BEFORE_COMBINATION"],
-                ).to_dict()
-            if scope == "完整护理":
-                if route.rule_id == "C02" and needs.get("fragrance_sensitive") is None:
-                    return DecisionPlan(
-                        action="ASK",
-                        route_id=route.rule_id,
-                        candidate_items=route.candidate_items,
-                        question=QuestionPlan(
-                            fields=["fragrance_sensitive"],
-                            route_id=route.rule_id,
-                            reason="带香候选正式建议前需要确认香味是否会引起不适。",
-                        ),
-                        reason_codes=["FRAGRANCE_SENSITIVITY_AFFECTS_PRIORITY"],
-                    ).to_dict()
-                return DecisionPlan(
-                    action="BUILD_CANDIDATE",
-                    route_id=route.rule_id,
-                    candidate_items=route.candidate_items,
-                    cautions=route.not_preferred_reasons,
-                ).to_dict()
+    if scope == "单品":
+        return _single_category_question(active_route_id).to_dict()
 
-    conflicted = [item for item in routes if item.applicability == "conflicted"]
-    if conflicted and recommendation_requested:
-        route = max(conflicted, key=_route_priority)
+    assessments = assess_routes(needs)
+    eligible = [
+        item
+        for item in assessments
+        if item.applicability in {"possible", "matched"}
+    ]
+
+    route: RuleAssessment | None = None
+    if active_route_id:
+        route = next(
+            (
+                item
+                for item in eligible
+                if item.rule_id == active_route_id
+            ),
+            None,
+        )
+    if route is None and eligible:
+        route = max(eligible, key=_route_priority)
+
+    if route is not None:
+        question = _question_for_route(route)
+        if question:
+            return question.to_dict()
+        if route.applicability == "matched":
+            return DecisionPlan(
+                action="BUILD_CANDIDATE",
+                route_id=route.rule_id,
+                candidate_items=route.candidate_items,
+                cautions=route.not_preferred_reasons,
+            ).to_dict()
+
+    # P201 的明确安全冲突只排除 P201，不误导为全品牌无可选方案。
+    blocked_s01 = next(
+        (
+            item
+            for item in assessments
+            if item.rule_id == "S01"
+            and item.applicability == "blocked"
+            and item.matched_fields
+        ),
+        None,
+    )
+    if blocked_s01:
         return DecisionPlan(
             action="NO_SUPPORTED_OPTION",
-            route_id=route.rule_id,
-            conflicts=route.conflicting_fields,
-            reason_codes=["ROUTE_CONFLICTS_WITH_CONFIRMED_NEEDS"],
+            route_id="S01",
+            candidate_items=blocked_s01.candidate_items,
+            conflicts=blocked_s01.blocking_reasons,
+            reason_codes=["P201_NOT_RECOMMENDED_FOR_CONFIRMED_STATE"],
         ).to_dict()
 
-    profile_present = any(
-        needs.get(field) is not None
-        for field in ("skin_tendency", "sensitive_tendency")
-    ) or bool(needs.get("goals"))
-    if recommendation_requested or profile_present:
+    # 明确的无香硬要求与 C02 带香组合冲突时，说明边界并提供转向品类的入口。
+    fragrance_conflict = next(
+        (
+            item
+            for item in assessments
+            if item.rule_id == "C02"
+            and "fragrance_requirement" in item.conflicting_fields
+            and len(item.matched_fields) >= 2
+        ),
+        None,
+    )
+    if fragrance_conflict:
         return DecisionPlan(
-            action="ASK",
-            question=QuestionPlan(
-                fields=["selection_scope"],
-                reason="需要先确定想看指定品类还是完整护理。",
-            ),
-            reason_codes=["SELECTION_SCOPE_REQUIRED"],
+            action="NO_SUPPORTED_OPTION",
+            route_id="C02",
+            conflicts=["fragrance_requirement"],
+            reason_codes=["ROUTE_CONFLICTS_WITH_HARD_FRAGRANCE_REQUIREMENT"],
         ).to_dict()
 
-    if _asks_fact(text):
-        return DecisionPlan(action="ANSWER_FACT").to_dict()
+    if recommendation_requested or profile_present:
+        if needs.get("skin_tendency") is None and not needs.get("goals"):
+            return _ask(
+                ["skin_tendency", "goals"],
+                question_id="general_profile",
+                reason="需要先了解肤质和护理目标。",
+                reason_codes=["PROFILE_REQUIRED"],
+            ).to_dict()
+        if needs.get("skin_tendency") is None:
+            return _ask(
+                ["skin_tendency"],
+                question_id="general_skin",
+                reason="需要先了解肤质。",
+                reason_codes=["SKIN_TENDENCY_REQUIRED"],
+            ).to_dict()
+        if not needs.get("goals"):
+            return _ask(
+                ["goals"],
+                question_id="general_goals",
+                reason="需要先了解护理目标。",
+                reason_codes=["GOAL_REQUIRED"],
+            ).to_dict()
+        return _single_category_question().to_dict()
+
     return DecisionPlan(action="CHAT").to_dict()
 
 

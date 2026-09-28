@@ -462,6 +462,108 @@ def extract_pending_question_updates(
                 "value": "单品",
                 "evidence": single_term,
             }
+    if "desired_category" in pending:
+        category_terms = {
+            "洁面": ("洁面", "洗面奶"),
+            "保湿": ("保湿", "乳液", "面霜"),
+            "精华": ("精华", "果酸"),
+            "旅行配件": ("旅行配件", "旅行装", "分装瓶", "旅行"),
+        }
+        for category, terms in category_terms.items():
+            evidence = next((term for term in terms if term in normalized), None)
+            if evidence:
+                updates["desired_category"] = {
+                    "value": category,
+                    "evidence": evidence,
+                }
+                updates["selection_scope"] = {
+                    "value": "指定品类",
+                    "evidence": evidence,
+                }
+                break
+
+    safety_fields = [
+        field
+        for field in ("sensitive_tendency", "skin_damage", "current_discomfort")
+        if field in pending
+    ]
+    none_all = next(
+        (
+            term
+            for term in (
+                "这些都没有", "都没有这些情况", "三项都没有", "全部没有",
+                "均没有", "都没有", "都无", "都不存在",
+            )
+            if term in normalized
+        ),
+        None,
+    )
+    if len(safety_fields) >= 2 and none_all:
+        for field in safety_fields:
+            updates[field] = {"value": False, "evidence": none_all}
+
+    boolean_answers = {
+        "sensitive_tendency": {
+            False: ("不是敏感肌", "没有敏感倾向", "不敏感"),
+            True: ("有敏感倾向", "是敏感肌", "敏感"),
+        },
+        "skin_damage": {
+            False: ("皮肤没有受损", "没有受损", "没受损", "未受损"),
+            True: ("皮肤有受损", "有受损", "受损"),
+        },
+        "current_discomfort": {
+            False: ("目前没有明显不适", "没有明显不适", "没有不适", "没不适"),
+            True: ("目前有明显不适", "有明显不适", "有不适", "正在不适"),
+        },
+    }
+    for field in safety_fields:
+        if field in updates:
+            continue
+        for value, terms in boolean_answers[field].items():
+            evidence = next((term for term in terms if term in normalized), None)
+            if evidence:
+                updates[field] = {"value": value, "evidence": evidence}
+                break
+        if (
+            field not in updates
+            and pending == [field]
+            and normalized in {"没有", "没有的", "不是", "无"}
+        ):
+            updates[field] = {"value": False, "evidence": text.strip()}
+
+    if "acid_experience" in pending:
+        experience_false = next(
+            (term for term in ("没有焕肤经验", "没用过果酸", "没有经验") if term in normalized),
+            None,
+        )
+        experience_true = next(
+            (term for term in ("有焕肤经验", "用过果酸", "有果酸经验", "有经验") if term in normalized),
+            None,
+        )
+        if experience_false:
+            updates["acid_experience"] = {"value": False, "evidence": experience_false}
+        elif experience_true:
+            updates["acid_experience"] = {"value": True, "evidence": experience_true}
+        elif pending == ["acid_experience"] and normalized in {"有", "用过", "没有", "没用过"}:
+            updates["acid_experience"] = {
+                "value": normalized in {"有", "用过"},
+                "evidence": text.strip(),
+            }
+
+    if "skin_state_stable" in pending:
+        stable_false = next(
+            (term for term in ("状态不稳定", "皮肤不稳定", "不稳定") if term in normalized),
+            None,
+        )
+        stable_true = next(
+            (term for term in ("皮肤状态稳定", "状态比较稳定", "状态稳定", "稳定") if term in normalized),
+            None,
+        )
+        if stable_false:
+            updates["skin_state_stable"] = {"value": False, "evidence": stable_false}
+        elif stable_true:
+            updates["skin_state_stable"] = {"value": True, "evidence": stable_true}
+
     if "fragrance_sensitive" in pending:
         insensitive_term = next(
             (

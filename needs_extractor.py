@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -98,10 +99,37 @@ def create_needs_extractor(llm: Any):
     return llm.with_structured_output(NeedsExtraction, method="function_calling")
 
 
+def _model_update_supported_for_pending(field: str, evidence: str) -> bool:
+    """只允许语义上能够回答对应待确认字段的模型更新。"""
+    terms = {
+        "selection_scope": ("单品", "一件", "组合", "一套", "整套", "一起"),
+        "desired_category": ("洁面", "洗面奶", "保湿", "乳液", "面霜", "精华", "果酸", "旅行", "分装瓶"),
+        "skin_tendency": ("偏干", "干皮", "偏油", "油皮", "中性", "混合"),
+        "sensitive_tendency": ("敏感",),
+        "current_discomfort": ("不适", "不舒服"),
+        "skin_damage": ("受损",),
+        "persistent_issue": ("持续", "反复"),
+        "skin_state_stable": ("稳定",),
+        "barrier_fragile": ("屏障",),
+        "fragrance_preference": ("香味", "无香", "带香"),
+        "fragrance_requirement": ("无香", "香味"),
+        "fragrance_sensitive": ("香味", "敏感", "不舒服"),
+        "acid_experience": ("果酸", "焕肤", "经验", "用过"),
+        "travel_need": ("旅行", "出差", "携带"),
+        "goals": ("简单", "清爽", "轻薄", "粗糙", "保湿", "护理"),
+    }
+    if field == "budget_yuan":
+        return bool(re.search(r"\d", evidence))
+    if field == "budget_status":
+        return any(term in evidence for term in ("不限", "不提供", "不方便"))
+    return any(term in evidence for term in terms.get(field, ()))
+
+
 def extract_confirmed_needs(
     extractor: Any,
     current_needs: CustomerNeeds,
     latest_user_text: str,
+    pending_question_plan: dict[str, Any] | None = None,
 ) -> CustomerNeeds:
     """提取本轮稀疏更新，并通过原话校验后合并到现有状态。"""
     response = extractor.invoke(
@@ -111,6 +139,8 @@ def extract_confirmed_needs(
                 content=(
                     "当前需求状态（仅供识别纠正，不得把旧值作为本轮证据）：\n"
                     + json.dumps(current_needs, ensure_ascii=False, sort_keys=True)
+                    + "\n\n上一轮待回答问题计划：\n"
+                    + json.dumps(pending_question_plan, ensure_ascii=False, sort_keys=True)
                     + "\n\n最新用户消息：\n"
                     + latest_user_text
                 )
@@ -138,9 +168,15 @@ def extract_confirmed_needs(
     explicit = extract_explicit_fact_updates(latest_user_text)
     contextual = extract_pending_question_updates(latest_user_text, pending)
     if pending:
-        # 有待回答项时，只接收规则能够从原话确定的更新。无法确定就继续追问，
-        # 比把短答写进错误字段更安全。完整自由表达仍可由显式规则识别。
-        updates = {**explicit, **contextual}
+        # 待回答时模型只能更新 QuestionPlan 指定字段，而且证据必须与字段语义相符。
+        # QuestionPlan 规则通道拥有最高优先级，用来安全绑定“都没有”等短回答。
+        allowed_model_updates = {
+            field: update
+            for field, update in model_updates.items()
+            if field in pending
+            and _model_update_supported_for_pending(field, str(update.get("evidence", "")))
+        }
+        updates = {**allowed_model_updates, **explicit, **contextual}
     else:
         # 没有问答上下文时，模型负责灵活表达，明确规则负责纠错并拥有最终优先级。
         updates = {**model_updates, **explicit}

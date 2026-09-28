@@ -156,6 +156,8 @@ class CareAgentState(TypedDict, total=False):
     messages: Annotated[list[AnyMessage], add_messages]
     customer_needs: CustomerNeeds
     decision_plan: dict[str, Any] | None
+    active_route_id: str | None
+    pending_question_plan: dict[str, Any] | None
     recommendation_validation: dict[str, Any] | None
     needs_extraction_error: str | None
 
@@ -241,9 +243,13 @@ def _question_validation(plan: dict[str, Any], needs: dict[str, Any]) -> dict[st
     }
 
 
-def build_care_agent(checkpointer: Any | None = None):
-    base_llm = get_llm()
-    needs_extractor = create_needs_extractor(base_llm)
+def build_care_agent(
+    checkpointer: Any | None = None,
+    base_llm: Any | None = None,
+    needs_extractor: Any | None = None,
+):
+    base_llm = base_llm or get_llm()
+    needs_extractor = needs_extractor or create_needs_extractor(base_llm)
     llm_with_tools = base_llm.bind_tools(TOOLS)
 
     def extract_needs_node(state: CareAgentState) -> dict[str, Any]:
@@ -256,7 +262,12 @@ def build_care_agent(checkpointer: Any | None = None):
                 "needs_extraction_error": None,
             }
         try:
-            updated = extract_confirmed_needs(needs_extractor, current, text)
+            updated = extract_confirmed_needs(
+                needs_extractor,
+                current,
+                text,
+                state.get("pending_question_plan"),
+            )
             error = None
         except Exception as exc:
             # 模型提取异常时仍使用高置信度规则通道，不让明确事实丢失。
@@ -281,13 +292,20 @@ def build_care_agent(checkpointer: Any | None = None):
     def plan_node(state: CareAgentState) -> dict[str, Any]:
         needs = state.get("customer_needs") or empty_customer_needs()
         text = _latest_user_text(state.get("messages", []))
-        plan = plan_next_action(needs, text)
-        if plan.get("action") == "ASK":
+        active_route_id = state.get("active_route_id")
+        pending_question_plan = state.get("pending_question_plan")
+        plan = plan_next_action(needs, text, active_route_id)
+        action = plan.get("action")
+        if action == "ASK":
             fields = (plan.get("question") or {}).get("fields") or []
             needs = set_pending_questions(needs, fields)
+            active_route_id = plan.get("route_id") or active_route_id
+            pending_question_plan = plan.get("question")
             validation = _question_validation(plan, needs)
-        elif plan.get("action") == "STOP_FOR_SAFETY":
+        elif action == "STOP_FOR_SAFETY":
             needs = set_pending_questions(needs, [])
+            active_route_id = None
+            pending_question_plan = None
             validation = {
                 "status": "safety_blocked",
                 "approved": False,
@@ -300,8 +318,10 @@ def build_care_agent(checkpointer: Any | None = None):
                 "professional_consultation_required": True,
                 "next_action": "停止相关护肤推荐并说明安全边界。",
             }
-        elif plan.get("action") == "NO_SUPPORTED_OPTION":
+        elif action == "NO_SUPPORTED_OPTION":
             needs = set_pending_questions(needs, [])
+            active_route_id = None
+            pending_question_plan = None
             validation = {
                 "status": "not_supported",
                 "approved": False,
@@ -315,9 +335,17 @@ def build_care_agent(checkpointer: Any | None = None):
             }
         else:
             validation = None
+            if action in {"BUILD_CANDIDATE", "COMPARE_CATEGORY"}:
+                needs = set_pending_questions(needs, [])
+                active_route_id = None
+                pending_question_plan = None
+            # ANSWER_FACT/ANSWER_POLICY 是对当前问答流程的临时插问，保留路线和
+            # QuestionPlan，下一轮继续等待原问题，不丢失多轮状态。
         return {
             "customer_needs": needs,
             "decision_plan": plan,
+            "active_route_id": active_route_id,
+            "pending_question_plan": pending_question_plan,
             "recommendation_validation": validation,
         }
 
