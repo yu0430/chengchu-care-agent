@@ -390,14 +390,36 @@ def extract_pending_question_updates(
     updates: dict[str, dict[str, Any]] = {}
 
     if "budget_yuan" in pending:
-        match = re.fullmatch(r"[¥￥]?\s*(\d+(?:\.\d{1,2})?)\s*元?", normalized)
+        # 待回答预算时允许和其他答案写在同一句，例如“400，可以接受香味”。
+        # 仅在预算确实处于 pending 时使用这个宽松匹配，避免把普通商品数字当预算。
+        match = re.search(
+            r"(?<![A-Za-z0-9])[¥￥]?\s*(\d+(?:\.\d{1,2})?)\s*元?(?![A-Za-z0-9])",
+            normalized,
+        )
         if match:
             amount = float(match.group(1))
             value: int | float = int(amount) if amount.is_integer() else amount
-            updates["budget_yuan"] = {"value": value, "evidence": text.strip()}
+            updates["budget_yuan"] = {"value": value, "evidence": match.group(0).strip()}
 
-    # “可以”只有在上一轮只问香味时才足够明确；同时问了两项时不能一答多填。
-    if pending == ["fragrance_preference"] and normalized in {
+    if "fragrance_preference" in pending and any(
+        term in normalized
+        for term in ("可以接受香味", "能接受香味", "不介意香味", "香味都可以", "香味不限")
+    ):
+        evidence = next(
+            term
+            for term in ("可以接受香味", "能接受香味", "不介意香味", "香味都可以", "香味不限")
+            if term in normalized
+        )
+        updates["fragrance_preference"] = {
+            "value": "不限" if evidence in {"香味都可以", "香味不限"} else "可接受香味",
+            "evidence": evidence,
+        }
+        updates["fragrance_requirement"] = {
+            "value": "无硬性要求",
+            "evidence": evidence,
+        }
+    # “可以”只有在上一轮只问香味偏好时才足够明确；同时问了两项时不能一答多填。
+    elif pending == ["fragrance_preference"] and normalized in {
         "可以", "能接受", "可以接受", "不介意", "都可以"
     }:
         updates["fragrance_preference"] = {
@@ -416,7 +438,14 @@ def extract_pending_question_updates(
         }
     if "selection_scope" in pending:
         complete_term = next(
-            (term for term in ("完整护理", "都看看", "一起", "一套", "整套") if term in normalized),
+            (
+                term
+                for term in (
+                    "完整护理组合", "基础护理组合", "护理组合", "完整护理",
+                    "看组合", "要组合", "都看看", "一起", "一套", "整套", "组合",
+                )
+                if term in normalized
+            ),
             None,
         )
         single_term = next(
@@ -432,6 +461,38 @@ def extract_pending_question_updates(
             updates["selection_scope"] = {
                 "value": "单品",
                 "evidence": single_term,
+            }
+    if "fragrance_sensitive" in pending:
+        insensitive_term = next(
+            (
+                term
+                for term in (
+                    "香味不会让我不舒服", "不会不舒服", "对香味不敏感",
+                    "香味不敏感", "不敏感", "不会",
+                )
+                if term in normalized
+            ),
+            None,
+        )
+        sensitive_term = next(
+            (
+                term
+                for term in (
+                    "香味会让我不舒服", "会不舒服", "对香味敏感", "香味敏感",
+                )
+                if term in normalized
+            ),
+            None,
+        )
+        if insensitive_term:
+            updates["fragrance_sensitive"] = {
+                "value": False,
+                "evidence": insensitive_term,
+            }
+        elif sensitive_term:
+            updates["fragrance_sensitive"] = {
+                "value": True,
+                "evidence": sensitive_term,
             }
     return updates
 

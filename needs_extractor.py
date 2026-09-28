@@ -124,22 +124,26 @@ def extract_confirmed_needs(
     else:
         raise ValueError("需求提取器没有返回 NeedsExtraction")
 
-    updates: dict[str, dict[str, Any]] = {}
+    model_updates: dict[str, dict[str, Any]] = {}
     for update in extraction.updates:
-        if update.field in updates:
+        if update.field in model_updates:
             raise ValueError(f"需求提取器重复输出字段：{update.field}")
-        updates[update.field] = {
+        model_updates[update.field] = {
             "value": update.value,
             "evidence": update.evidence,
         }
-    # 双通道合并：Qwen 负责灵活表达，规则通道补足无歧义的明确事实。
-    # 最新原话中的明确值优先；最终仍由 merge_confirmed_needs 验证 evidence。
-    updates.update(extract_explicit_fact_updates(latest_user_text))
-    contextual = extract_pending_question_updates(
-        latest_user_text, current_needs.get("pending_questions") or []
-    )
-    for field, update in contextual.items():
-        updates.setdefault(field, update)
+    # 待回答问题属于状态机协议。短回答必须优先按上一轮 QuestionPlan 绑定，
+    # 不能让模型把“不会”写成“单品”，或把香味回答写成当前皮肤不适。
+    pending = current_needs.get("pending_questions") or []
+    explicit = extract_explicit_fact_updates(latest_user_text)
+    contextual = extract_pending_question_updates(latest_user_text, pending)
+    if pending:
+        # 有待回答项时，只接收规则能够从原话确定的更新。无法确定就继续追问，
+        # 比把短答写进错误字段更安全。完整自由表达仍可由显式规则识别。
+        updates = {**explicit, **contextual}
+    else:
+        # 没有问答上下文时，模型负责灵活表达，明确规则负责纠错并拥有最终优先级。
+        updates = {**model_updates, **explicit}
     return merge_confirmed_needs(current_needs, updates, latest_user_text)
 
 
